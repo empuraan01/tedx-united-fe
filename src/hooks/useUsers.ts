@@ -1,22 +1,9 @@
 import { useState, useEffect } from 'react';
 import { profileAPI } from '@/lib/api';
-
-interface User {
-  _id: string;
-  displayName: string;
-  email: string;
-  nickname?: string;
-  isAdmin?: boolean;
-  emojis?: string[];
-  year?: number;
-  interests?: string[];
-  bio?: string;
-  hasProfilePicture?: boolean;
-  createdAt: string;
-}
+import { ProfileUser } from '@/types/user';
 
 export const useUsers = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<ProfileUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

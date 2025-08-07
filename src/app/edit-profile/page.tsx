@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { profileAPI } from "@/lib/api";
+import { ProfileUser } from "@/types/user";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function EditProfile() {
   const { user: currentUser, isAuthenticated, isLoading } = useAuth();
@@ -57,10 +59,16 @@ export default function EditProfile() {
       setError(null);
       setSuccess(null);
 
-      const updateData: any = {};
+      const updateData: {
+        nickname?: string;
+        year?: number;
+        interests?: string[];
+        bio?: string;
+        emojis?: string[];
+      } = {};
       
       if (profileData.nickname !== undefined) updateData.nickname = profileData.nickname;
-      if (profileData.year !== undefined) updateData.year = parseInt(profileData.year) || null;
+      if (profileData.year !== undefined) updateData.year = parseInt(profileData.year) || undefined;
       if (profileData.interests !== undefined) updateData.interests = profileData.interests;
       if (profileData.bio !== undefined) updateData.bio = profileData.bio;
       if (profileData.emojis !== undefined) updateData.emojis = profileData.emojis;
@@ -211,13 +219,16 @@ export default function EditProfile() {
             <h2 className="text-white font-semibold mb-3">Profile Picture</h2>
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 bg-white rounded-full overflow-hidden">
-                {currentUser?.hasProfilePicture ? (
-                  <img 
-                    src={`${process.env.NEXT_PUBLIC_API_URL}/profile/my-picture`}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
+                                 {currentUser?.hasProfilePicture ? (
+                   <Image 
+                     src={`${process.env.NEXT_PUBLIC_API_URL}/profile/my-picture`}
+                     alt="Profile"
+                     width={80}
+                     height={80}
+                     className="w-full h-full object-cover"
+                     unoptimized
+                   />
+                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-500 text-2xl">
                     {currentUser?.name?.charAt(0)?.toUpperCase() || '?'}
                   </div>

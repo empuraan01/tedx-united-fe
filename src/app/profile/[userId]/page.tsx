@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { profileAPI } from "@/lib/api";
 import { useParams } from "next/navigation";
+import { ProfileUser } from "@/types/user";
+import Image from "next/image";
 
 export default function UserProfile() {
-  const { user: currentUser, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const params = useParams();
-  const [profileUser, setProfileUser] = useState<any>(null);
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,10 +93,13 @@ export default function UserProfile() {
         {/* Profile Picture */}
         <div className="w-36 h-36 bg-white rounded-full mb-6 overflow-hidden">
           {profileUser.hasProfilePicture ? (
-            <img 
+            <Image 
               src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${profileUser._id}`}
               alt={profileUser.displayName}
+              width={144}
+              height={144}
               className="w-full h-full object-cover"
+              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-500 text-4xl">

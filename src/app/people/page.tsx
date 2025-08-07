@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useUsers } from "@/hooks/useUsers";
 import { useAuth } from "@/contexts/AuthContext";
+import Image from "next/image";
 
 export default function PeoplePage() {
   const [sortBy, setSortBy] = useState("year-latest");
@@ -108,10 +109,13 @@ export default function PeoplePage() {
                   {/* Profile Picture */}
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full mb-2 overflow-hidden">
                     {person.hasProfilePicture && (
-                      <img 
+                      <Image 
                         src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${person._id}`}
                         alt={person.displayName}
+                        width={64}
+                        height={64}
                         className="w-full h-full object-cover"
+                        unoptimized
                       />
                     )}
                   </div>

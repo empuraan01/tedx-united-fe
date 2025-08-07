@@ -1,12 +1,10 @@
 'use client';
 
-import Image from "next/image";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 export default function Home() {
-  const { user, isAuthenticated, isLoading, login } = useAuth();
+  const { isLoading, login } = useAuth();
 
   // Handle OAuth callback
   useEffect(() => {
