@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 export default function Home() {
-  const { isLoading, login } = useAuth();
+  const { isLoading, login, checkAuthStatus } = useAuth();
 
   // Handle OAuth callback
   useEffect(() => {
@@ -13,9 +13,11 @@ export default function Home() {
     
     if (success === 'true') {
 
-      window.location.href = '/people';
+      checkAuthStatus().then(() => {
+        window.location.href = '/people';
+      });
     }
-  }, []);
+  }, [checkAuthStatus]);
 
   const handleLogin = () => {
     login();
