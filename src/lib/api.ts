@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -12,12 +12,22 @@ const api = axios.create({
 });
 
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (token) {
-      config.headers = config.headers || {};
-      (config.headers as any)['Authorization'] = `Bearer ${token}`;
+    if (!token) return config;
+
+    const headerValue = `Bearer ${token}`;
+    if (!config.headers) {
+      // In practice headers is always defined on InternalAxiosRequestConfig, but guard just in case
+      (config as any).headers = {};
+    }
+
+    const headers = config.headers as AxiosHeaders | Record<string, unknown>;
+    if (headers && typeof (headers as any).set === 'function') {
+      (headers as AxiosHeaders).set('Authorization', headerValue);
+    } else {
+      (headers as Record<string, unknown>).Authorization = headerValue;
     }
   } catch {}
   return config;
