@@ -72,6 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await authAPI.logout();
       setUser(null);
       setIsAuthenticated(false);
+      try { localStorage.removeItem('auth_token'); } catch {}
     } catch (error) {
       console.error('Error during logout:', error);
     }

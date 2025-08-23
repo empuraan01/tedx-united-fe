@@ -11,7 +11,19 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to handle errors
+
+api.interceptors.request.use((config) => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (token) {
+      config.headers = config.headers || {};
+      (config.headers as any)['Authorization'] = `Bearer ${token}`;
+    }
+  } catch {}
+  return config;
+});
+
+// Response interceptor for logging
 api.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -10,10 +10,16 @@ export default function Home() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const success = urlParams.get('success');
+    const token = urlParams.get('token');
     
     if (success === 'true') {
-
+      if (token) {
+        try { localStorage.setItem('auth_token', token); } catch {}
+      }
       checkAuthStatus().then(() => {
+        const url = new URL(window.location.href);
+        url.search = '';
+        window.history.replaceState({}, '', url.toString());
         window.location.href = '/people';
       });
     }
