@@ -20,11 +20,11 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const headerValue = `Bearer ${token}`;
     if (!config.headers) {
       // In practice headers is always defined on InternalAxiosRequestConfig, but guard just in case
-      (config as any).headers = {};
+      config.headers = {} as AxiosHeaders;
     }
 
     const headers = config.headers as AxiosHeaders | Record<string, unknown>;
-    if (headers && typeof (headers as any).set === 'function') {
+    if (headers && 'set' in headers && typeof headers.set === 'function') {
       (headers as AxiosHeaders).set('Authorization', headerValue);
     } else {
       (headers as Record<string, unknown>).Authorization = headerValue;
