@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@clerk/nextjs";
 import { profileAPI } from "@/lib/api";
 import { ProfileUser } from "@/types/user";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function EditProfile() {
-  const { user: currentUser, isAuthenticated, isLoading } = useAuth();
+  const { user: currentUser, isSignedIn, isLoaded } = useUser();
   const router = useRouter();
   
   const [profileData, setProfileData] = useState({
@@ -26,13 +26,18 @@ export default function EditProfile() {
   const [success, setSuccess] = useState<string | null>(null);
   const [newInterest, setNewInterest] = useState('');
   const [newEmoji, setNewEmoji] = useState('');
+  const [userProfile, setUserProfile] = useState<ProfileUser | null>(null);
+  const [imageCacheKey, setImageCacheKey] = useState(Date.now());
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
-        const response = await profileAPI.getMyProfile();
+        const response = await profileAPI.getMyProfile(currentUser);
         const user = response.data.user;
+        
+        // Store the complete user profile
+        setUserProfile(user);
         
         setProfileData({
           nickname: user.nickname || '',
@@ -48,10 +53,10 @@ export default function EditProfile() {
       }
     };
 
-    if (isAuthenticated && !isLoading) {
+    if (isSignedIn && isLoaded) {
       fetchProfile();
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isSignedIn, isLoaded, currentUser]);
 
   const handleSave = async () => {
     try {
@@ -73,7 +78,7 @@ export default function EditProfile() {
       if (profileData.bio !== undefined) updateData.bio = profileData.bio;
       if (profileData.emojis !== undefined) updateData.emojis = profileData.emojis;
 
-      await profileAPI.updateProfile(updateData);
+      await profileAPI.updateProfile(updateData, currentUser);
       setSuccess('Profile updated successfully!');
       
       // Redirect to profile page after a short delay
@@ -125,18 +130,34 @@ export default function EditProfile() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log('🔄 Starting file upload...', { fileName: file.name, fileSize: file.size, fileType: file.type });
+    console.log('👤 Current user:', currentUser?.id);
+
     try {
       setSaving(true);
       setError(null);
-      await profileAPI.uploadProfilePicture(file);
+      
+      console.log('📤 Uploading file...');
+      const uploadResponse = await profileAPI.uploadProfilePicture(file, currentUser);
+      console.log('✅ Upload response:', uploadResponse.data);
+      
       setSuccess('Profile picture uploaded successfully!');
       
-      // Refresh the page to show the new picture
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload profile picture');
+      // Update cache key to force image refresh
+      setImageCacheKey(Date.now());
+      
+      // Refresh the user profile to show the new picture
+      console.log('🔄 Refreshing profile...');
+      // Add a small delay to ensure database update is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await profileAPI.getMyProfile(currentUser);
+      console.log('📊 Updated profile:', response.data.user);
+      console.log('🖼️ Has profile picture?', response.data.user.hasProfilePicture);
+      setUserProfile(response.data.user);
+    } catch (err: any) {
+      console.error('❌ Upload error:', err);
+      console.error('❌ Error response:', err.response?.data);
+      setError(err.response?.data?.error || err.message || 'Failed to upload profile picture');
     } finally {
       setSaving(false);
     }
@@ -146,13 +167,15 @@ export default function EditProfile() {
     try {
       setSaving(true);
       setError(null);
-      await profileAPI.deleteProfilePicture();
+      await profileAPI.deleteProfilePicture(currentUser);
       setSuccess('Profile picture deleted successfully!');
       
-      // Refresh the page
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Update cache key to force image refresh
+      setImageCacheKey(Date.now());
+      
+      // Refresh the user profile to show the change
+      const response = await profileAPI.getMyProfile(currentUser);
+      setUserProfile(response.data.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete profile picture');
     } finally {
@@ -160,7 +183,7 @@ export default function EditProfile() {
     }
   };
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -168,7 +191,7 @@ export default function EditProfile() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
@@ -219,20 +242,29 @@ export default function EditProfile() {
             <h2 className="text-white font-semibold mb-3">Profile Picture</h2>
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 bg-white rounded-full overflow-hidden">
-                                 {currentUser?.hasProfilePicture ? (
-                   <Image 
-                     src={`${process.env.NEXT_PUBLIC_API_URL}/profile/my-picture`}
-                     alt="Profile"
-                     width={80}
-                     height={80}
-                     className="w-full h-full object-cover"
-                     unoptimized
-                   />
-                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-500 text-2xl">
-                    {currentUser?.name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
+                {userProfile?.hasProfilePicture ? (
+                  <Image 
+                    src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${userProfile._id}?t=${imageCacheKey}`}
+                    alt="Profile"
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                    onError={(e) => {
+                      // Hide image and show fallback if loading fails
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.nextSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className="w-full h-full flex items-center justify-center text-gray-500 text-2xl font-bold"
+                  style={{ display: userProfile?.hasProfilePicture ? 'none' : 'flex' }}
+                >
+                  {userProfile?.nickname?.charAt(0)?.toUpperCase() || userProfile?.displayName?.charAt(0)?.toUpperCase() || currentUser?.firstName?.charAt(0)?.toUpperCase() || '?'}
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-white text-sm cursor-pointer">
@@ -247,7 +279,7 @@ export default function EditProfile() {
                     Upload New Picture
                   </span>
                 </label>
-                {currentUser?.hasProfilePicture && (
+                {userProfile?.hasProfilePicture && (
                   <button
                     onClick={handleDeletePicture}
                     disabled={saving}

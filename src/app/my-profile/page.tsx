@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser, SignOutButton } from "@clerk/nextjs";
 import { profileAPI } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { ProfileUser } from "@/types/user";
 import Image from "next/image";
 
 export default function MyProfile() {
-  const { user: currentUser, isAuthenticated, isLoading, logout } = useAuth();
+  const { user: currentUser, isSignedIn, isLoaded } = useUser();
   const router = useRouter();
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,22 +21,24 @@ export default function MyProfile() {
         setLoading(true);
         setError(null);
 
-        const response = await profileAPI.getMyProfile();
+        console.log('🔍 Fetching profile for user:', currentUser?.id);
+        const response = await profileAPI.getMyProfile(currentUser);
         setProfileUser(response.data.user);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile');
-        console.error('Error fetching profile:', err);
+        console.error('❌ Error fetching profile:', err);
+        console.error('👤 Current user object:', currentUser);
       } finally {
         setLoading(false);
       }
     };
 
-    if (isAuthenticated && !isLoading) {
+    if (isSignedIn && isLoaded) {
       fetchProfile();
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isSignedIn, isLoaded, currentUser]);
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -44,7 +46,7 @@ export default function MyProfile() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
@@ -84,10 +86,7 @@ export default function MyProfile() {
     );
   }
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-  };
+
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
@@ -97,7 +96,7 @@ export default function MyProfile() {
         <div className="w-36 h-36 bg-white rounded-full mb-6 overflow-hidden">
           {profileUser.hasProfilePicture ? (
             <Image 
-              src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${profileUser._id}`}
+              src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${profileUser._id}?t=${Date.now()}`}
               alt={profileUser.displayName}
               width={144}
               height={144}
@@ -196,12 +195,11 @@ export default function MyProfile() {
           >
             Edit
           </Link>
-          <button
-            onClick={handleLogout}
-            className="text-white text-xs font-normal hover:text-gray-300 transition-colors"
-          >
-            Logout
-          </button>
+          <SignOutButton redirectUrl="/" signOutOptions={{ sessionId: undefined }}>
+            <button className="text-white text-xs font-normal hover:text-gray-300 transition-colors">
+              Logout
+            </button>
+          </SignOutButton>
         </nav>
       </div>
     </div>

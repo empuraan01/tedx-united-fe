@@ -3,13 +3,13 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useUsers } from "@/hooks/useUsers";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 
 export default function PeoplePage() {
   const [sortBy, setSortBy] = useState("year-latest");
   const { users, loading, error } = useUsers();
-  const { isAuthenticated } = useAuth();
+  const { isSignedIn, isLoaded } = useUser();
 
   // Sort users based on selected criteria
   const sortedUsers = useMemo(() => {
@@ -28,15 +28,20 @@ export default function PeoplePage() {
     }
   }, [users, sortBy]);
 
-  if (!isAuthenticated) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center">
-          <h1 className="text-xl mb-4">Please sign in to view people</h1>
-          <Link href="/" className="text-red-500 hover:text-red-400">
-            Go to sign in
-          </Link>
-        </div>
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    // Redirect to home for sign-in instead of showing message
+    window.location.href = '/';
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Redirecting to sign in...</div>
       </div>
     );
   }
@@ -108,16 +113,29 @@ export default function PeoplePage() {
                   
                   {/* Profile Picture */}
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full mb-2 overflow-hidden">
-                    {person.hasProfilePicture && (
+                    {person.hasProfilePicture ? (
                       <Image 
-                        src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${person._id}`}
+                        src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${person._id}?t=${Date.now()}`}
                         alt={person.displayName}
                         width={64}
                         height={64}
                         className="w-full h-full object-cover"
                         unoptimized
+                        onError={(e) => {
+                          // Hide image and show fallback if loading fails
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.nextSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
                       />
-                    )}
+                    ) : null}
+                    <div 
+                      className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-bold"
+                      style={{ display: person.hasProfilePicture ? 'none' : 'flex' }}
+                    >
+                      {person.nickname?.charAt(0)?.toUpperCase() || person.displayName?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
                   </div>
                   
                   {/* Name */}
@@ -154,7 +172,7 @@ export default function PeoplePage() {
             People
           </div>
           <Link 
-            href="/" 
+            href="/gallery" 
             className="text-white text-xs font-normal hover:text-gray-300 transition-colors"
           >
             Gallery

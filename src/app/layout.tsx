@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { ClerkProvider } from '@clerk/nextjs'
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -24,9 +24,13 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} antialiased`}
       >
-        <AuthProvider>
+        <ClerkProvider 
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+          afterSignInUrl="/people"
+          afterSignUpUrl="/people"
+        >
           {children}
-        </AuthProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@clerk/nextjs";
 import { profileAPI } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { ProfileUser } from "@/types/user";
 import Image from "next/image";
 
 export default function UserProfile() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user: currentUser, isSignedIn, isLoaded } = useUser();
   const params = useParams();
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,12 +33,12 @@ export default function UserProfile() {
       }
     };
 
-    if (isAuthenticated && !isLoading && userId) {
+    if (isSignedIn && isLoaded && userId) {
       fetchProfile();
     }
-  }, [isAuthenticated, isLoading, userId]);
+  }, [isSignedIn, isLoaded, userId, currentUser]);
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -46,7 +46,7 @@ export default function UserProfile() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
@@ -94,18 +94,27 @@ export default function UserProfile() {
         <div className="w-36 h-36 bg-white rounded-full mb-6 overflow-hidden">
           {profileUser.hasProfilePicture ? (
             <Image 
-              src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${profileUser._id}`}
+              src={`${process.env.NEXT_PUBLIC_API_URL}/profile/picture/${profileUser._id}?t=${Date.now()}`}
               alt={profileUser.displayName}
               width={144}
               height={144}
               className="w-full h-full object-cover"
               unoptimized
+              onError={(e) => {
+                // Hide image and show fallback if loading fails
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallback = target.nextSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-500 text-4xl">
-              {profileUser.displayName?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-          )}
+          ) : null}
+          <div 
+            className="w-full h-full flex items-center justify-center text-gray-500 text-4xl font-bold"
+            style={{ display: profileUser.hasProfilePicture ? 'none' : 'flex' }}
+          >
+            {profileUser.nickname?.charAt(0)?.toUpperCase() || profileUser.displayName?.charAt(0)?.toUpperCase() || '?'}
+          </div>
         </div>
 
         {/* User Info */}
@@ -113,11 +122,8 @@ export default function UserProfile() {
           <h1 className="text-white text-xl font-bold mb-1">
             {profileUser.nickname || profileUser.displayName}
           </h1>
-          <p className="text-white text-xs font-normal mb-1">
-            {profileUser.year || 'N/A'}
-          </p>
           <p className="text-white text-xs font-normal">
-            {profileUser.email}
+            {profileUser.year || 'N/A'}
           </p>
         </div>
 

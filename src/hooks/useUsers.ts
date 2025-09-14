@@ -12,6 +12,7 @@ export const useUsers = () => {
       setLoading(true);
       setError(null);
       
+      // No authentication needed for getAllUsers
       const response = await profileAPI.getAllUsers();
       setUsers(response.data.users || []);
     } catch (err) {
@@ -24,7 +25,7 @@ export const useUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, []); // Only run once on mount
 
   return {
     users,
